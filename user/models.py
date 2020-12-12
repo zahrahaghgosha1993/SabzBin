@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 
 from helper.bas_models import AbstractModel
@@ -33,6 +34,11 @@ class ProjectUserManager(BaseUserManager):
         return user
 
 
+class UserWithAddressCountManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().annotate(num_addresses=Count('addresses'))
+
+
 class ProjectUser(AbstractModel, AbstractUser):
     phone = models.CharField(verbose_name=_('phone'),
                              validators=[validate_phone],
@@ -41,6 +47,7 @@ class ProjectUser(AbstractModel, AbstractUser):
     REQUIRED_FIELDS = []
 
     objects = ProjectUserManager()
+    with_addresses_count_objects = UserWithAddressCountManager()
 
     def __str__(self):
         """returns a Unicode “representation” of ProjectUser object."""
@@ -50,13 +57,21 @@ class ProjectUser(AbstractModel, AbstractUser):
         return "{}".format(self.username)
 
 
+class CreatedByStaffAddressManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(type_of_creator="staff")
+
+
 class Address(AbstractModel):
     user = models.ForeignKey(ProjectUser, on_delete=models.CASCADE, related_name='addresses')
     title = models.CharField(max_length=200, blank=True, null=True)
     create_by = models.ForeignKey(ProjectUser, on_delete=models.CASCADE)
-    latitude = models.FloatField(min_value=-90, max_value=90)
-    longitude = models.FloatField(min_value=-180, max_value=180)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
 
     @property
     def type_of_creator(self):
         return "staff" if self.create_by.is_staff else "user"
+
+    objects = models.Manager()
+    created_by_staff_objects = CreatedByStaffAddressManager()
