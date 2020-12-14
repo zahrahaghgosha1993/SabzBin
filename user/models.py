@@ -6,6 +6,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from helper.bas_models import AbstractModel
 from helper.model_validator import validate_phone
+from helper.send_notif import send_notif
 
 
 class ProjectUserManager(BaseUserManager):
@@ -75,3 +76,7 @@ class Address(AbstractModel):
 
     objects = models.Manager()
     created_by_staff_objects = CreatedByStaffAddressManager()
+
+    def save(self, *args, **kwargs):
+        super(Address, self).save(*args, **kwargs)
+        send_notif(self.user.uid)
